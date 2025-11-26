@@ -76,7 +76,7 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newJob: Job = {
-      id: Date.now().toString(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
       title: formData.title || "Marketplace Item",
       description: formData.description,
       pickupLocation: formData.pickup,

@@ -6,67 +6,48 @@ import JobBoard from './components/JobBoard';
 import UserProfile from './components/UserProfile';
 import Auth from './components/Auth';
 import { ToastContainer, ToastMessage } from './components/Toast';
-import { ViewState, Job, VehicleType, User } from './types';
-import { ArrowRight, Package, ShieldCheck, Truck } from 'lucide-react';
-
-// Mock Initial Data
-const INITIAL_JOBS: Job[] = [
-  {
-    id: '1',
-    title: 'Antique Oak Dresser',
-    description: 'Heavy solid wood dresser. Needs two people or a dolly. I can help load.',
-    pickupLocation: '123 Maple St, Downtown',
-    dropoffLocation: '456 Oak Ln, Suburbs',
-    status: 'pending',
-    price: 65,
-    platformFee: 10,
-    vehicleType: VehicleType.PICKUP,
-    createdAt: Date.now() - 3600000,
-    distanceMiles: 12,
-    imageUrl: 'https://picsum.photos/400/300?random=1',
-    driverConfirmed: false,
-    requesterConfirmed: false
-  },
-  {
-    id: '2',
-    title: 'Free Sofa Bed',
-    description: 'Good condition, just need it gone by Saturday. It is on the 2nd floor.',
-    pickupLocation: '789 Pine Ave, Westside',
-    dropoffLocation: '321 Elm St, Northside',
-    status: 'pending',
-    price: 80,
-    platformFee: 12,
-    vehicleType: VehicleType.BOX_TRUCK,
-    createdAt: Date.now() - 7200000,
-    distanceMiles: 8,
-    imageUrl: 'https://picsum.photos/400/300?random=2',
-    driverConfirmed: false,
-    requesterConfirmed: false
-  },
-  {
-    id: '3',
-    title: 'Garden Pavers (Leftover)',
-    description: 'Stack of about 50 pavers. Easy pickup from driveway.',
-    pickupLocation: '55 Garden Way',
-    dropoffLocation: '888 River Rd',
-    status: 'completed',
-    price: 45,
-    platformFee: 7,
-    vehicleType: VehicleType.SUV,
-    createdAt: Date.now() - 172800000, // 2 days ago
-    distanceMiles: 5,
-    imageUrl: 'https://picsum.photos/400/300?random=3',
-    driverConfirmed: true,
-    requesterConfirmed: true,
-    ratingForDriver: 5
-  }
-];
+import { ViewState, Job, User } from './types';
+import { ArrowRight, Package, ShieldCheck, Truck, Loader2 } from 'lucide-react';
+import { db } from './services/databaseService';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<ViewState>('landing');
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  // State
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [currentView, setCurrentView] = useState<ViewState>('landing');
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize App Data
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const fetchedJobs = await db.getJobs();
+        setJobs(fetchedJobs);
+        
+        // Check for persistent session
+        const storedUser = localStorage.getItem('haulhelper_session_v1');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (e) {
+        console.error("Failed to load data", e);
+        addToast("Error", "Failed to connect to services.", 'alert');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initData();
+  }, []);
+
+  // Persist session only (not the whole DB)
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('haulhelper_session_v1', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('haulhelper_session_v1');
+    }
+  }, [user]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -76,16 +57,11 @@ const App: React.FC = () => {
   }, []);
 
   const addToast = (title: string, message: string, type: 'info' | 'success' | 'alert') => {
-    // Trigger native browser notification if allowed
     if (Notification.permission === 'granted') {
         new Notification(title, { body: message });
     }
-
-    // Add in-app toast
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, title, message, type }]);
-    
-    // Auto dismiss
     setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, 6000);
@@ -95,104 +71,118 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const handleJobCreated = (newJob: Job) => {
-    setJobs([newJob, ...jobs]);
-    setCurrentView('driver'); // Switch to driver view to see it listed (demo flow)
-    
-    // Simulate push notification to Drivers
-    setTimeout(() => {
-        addToast("New Haul Alert 🚚", `A new ${newJob.vehicleType} job was just posted nearby: ${newJob.title}`, 'alert');
-    }, 1500);
-  };
+  // --- ACTION HANDLERS USING DB SERVICE ---
 
-  const handleAcceptJob = (id: string) => {
-    const job = jobs.find(j => j.id === id);
-    setJobs(jobs.map(j => j.id === id ? { ...j, status: 'accepted' } : j));
-
-    // Simulate push notification to Requester
-    if (job) {
-        setTimeout(() => {
-            addToast("Driver Found! 🎉", `A driver has accepted your request for: ${job.title}. They are on their way.`, 'success');
-        }, 1000);
+  const handleJobCreated = async (newJob: Job) => {
+    setIsLoading(true);
+    try {
+      await db.createJob(newJob);
+      setJobs(prev => [newJob, ...prev]);
+      setCurrentView('driver');
+      
+      // Simulate push notification
+      setTimeout(() => {
+          addToast("New Haul Alert 🚚", `A new ${newJob.vehicleType} job was just posted nearby: ${newJob.title}`, 'alert');
+      }, 1500);
+    } catch (e) {
+      addToast("Error", "Failed to create job. Please try again.", 'alert');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDriverConfirm = (id: string) => {
-    let jobCompleted = false;
-    let jobTitle = '';
-    
-    setJobs(jobs.map(j => {
-      if (j.id === id) {
-        jobTitle = j.title;
-        const updatedJob = { ...j, driverConfirmed: true };
-        // Check if both confirmed
-        if (updatedJob.requesterConfirmed) {
-          updatedJob.status = 'completed';
-          jobCompleted = true;
-        }
-        return updatedJob;
+  const handleAcceptJob = async (id: string) => {
+    try {
+      const updatedJob = await db.updateJob(id, { status: 'accepted' });
+      setJobs(prevJobs => prevJobs.map(j => j.id === id ? updatedJob : j));
+      
+      setTimeout(() => {
+          addToast("Driver Found! 🎉", `A driver has accepted your request for: ${updatedJob.title}. They are on their way.`, 'success');
+      }, 1000);
+    } catch (e) {
+      addToast("Error", "Could not accept job.", 'alert');
+    }
+  };
+
+  const handleDriverConfirm = async (id: string) => {
+    try {
+      const currentJob = jobs.find(j => j.id === id);
+      if (!currentJob) return;
+
+      const updates: Partial<Job> = { driverConfirmed: true };
+      
+      // Check if this action completes the job
+      let isNowCompleted = false;
+      if (currentJob.requesterConfirmed) {
+        updates.status = 'completed';
+        isNowCompleted = true;
       }
-      return j;
-    }));
 
-    // Notify Requester
-    setTimeout(() => {
-        if (jobCompleted) {
-            addToast("Delivery Complete ✅", `Escrow released! ${jobTitle} has been successfully delivered and confirmed by both parties.`, 'success');
-        } else {
-            addToast("Delivery Update 📦", `Driver has arrived for ${jobTitle}. Please confirm receipt in your profile to release funds.`, 'alert');
-        }
-    }, 500);
+      const updatedJob = await db.updateJob(id, updates);
+      setJobs(prev => prev.map(j => j.id === id ? updatedJob : j));
+
+      setTimeout(() => {
+          if (isNowCompleted) {
+              addToast("Delivery Complete ✅", `Escrow released! ${updatedJob.title} has been successfully delivered and confirmed by both parties.`, 'success');
+          } else {
+              addToast("Delivery Update 📦", `Driver has arrived for ${updatedJob.title}. Please confirm receipt in your profile to release funds.`, 'alert');
+          }
+      }, 500);
+
+    } catch (e) {
+      addToast("Error", "Failed to update status", 'alert');
+    }
   };
 
-  const handleRequesterConfirm = (id: string) => {
-    let jobCompleted = false;
-    let jobTitle = '';
+  const handleRequesterConfirm = async (id: string) => {
+    try {
+      const currentJob = jobs.find(j => j.id === id);
+      if (!currentJob) return;
 
-    setJobs(jobs.map(j => {
-       if (j.id === id) {
-         jobTitle = j.title;
-         const updatedJob = { ...j, requesterConfirmed: true };
-         // Check if both confirmed
-         if (updatedJob.driverConfirmed) {
-           updatedJob.status = 'completed';
-           jobCompleted = true;
-         }
-         return updatedJob;
-       }
-       return j;
-    }));
+      const updates: Partial<Job> = { requesterConfirmed: true };
+      
+      let isNowCompleted = false;
+      if (currentJob.driverConfirmed) {
+        updates.status = 'completed';
+        isNowCompleted = true;
+      }
 
-    // Notify Driver
-    setTimeout(() => {
-        if (jobCompleted) {
-            addToast("Payment Released 💰", `Customer confirmed receipt of ${jobTitle}. Funds have been transferred to your wallet.`, 'success');
-        } else {
-            addToast("Customer Confirmed ✅", `Customer has confirmed receipt of ${jobTitle}. Waiting for your delivery confirmation.`, 'info');
-        }
-    }, 500);
+      const updatedJob = await db.updateJob(id, updates);
+      setJobs(prev => prev.map(j => j.id === id ? updatedJob : j));
+
+      setTimeout(() => {
+          if (isNowCompleted) {
+              addToast("Payment Released 💰", `Customer confirmed receipt of ${updatedJob.title}. Funds have been transferred to your wallet.`, 'success');
+          } else {
+              addToast("Customer Confirmed ✅", `Customer has confirmed receipt of ${updatedJob.title}. Waiting for your delivery confirmation.`, 'info');
+          }
+      }, 500);
+    } catch (e) {
+      addToast("Error", "Failed to confirm receipt", 'alert');
+    }
   };
 
-  const handleRateUser = (jobId: string, role: 'driver' | 'requester', rating: number) => {
-    setJobs(jobs.map(j => {
-        if (j.id === jobId) {
-            // If the user is a 'driver' (in driver view), they are rating the requester
-            // If the user is a 'requester' (in requester view), they are rating the driver
-            return {
-                ...j,
-                ratingForRequester: role === 'driver' ? rating : j.ratingForRequester,
-                ratingForDriver: role === 'requester' ? rating : j.ratingForDriver
-            };
-        }
-        return j;
-    }));
-    addToast("Rating Submitted ⭐", "Thanks for your feedback!", 'success');
+  const handleRateUser = async (jobId: string, role: 'driver' | 'requester', rating: number) => {
+    try {
+      const job = jobs.find(j => j.id === jobId);
+      if (!job) return;
+
+      const updates: Partial<Job> = role === 'driver' 
+        ? { ratingForRequester: rating }
+        : { ratingForDriver: rating };
+
+      const updatedJob = await db.updateJob(jobId, updates);
+      setJobs(prev => prev.map(j => j.id === jobId ? updatedJob : j));
+      addToast("Rating Submitted ⭐", "Thanks for your feedback!", 'success');
+    } catch (e) {
+      addToast("Error", "Failed to submit rating", 'alert');
+    }
   };
 
-  const handleLogin = (user: User) => {
-    setUser(user);
+  const handleLogin = (loggedInUser: User) => {
+    setUser({ ...loggedInUser, isAvailable: true });
     setCurrentView('landing');
-    addToast("Welcome back!", `Signed in as ${user.name}`, 'success');
+    addToast("Welcome back!", `Signed in as ${loggedInUser.name}`, 'success');
   };
 
   const handleLogout = () => {
@@ -200,6 +190,39 @@ const App: React.FC = () => {
     setCurrentView('landing');
     addToast("Signed out", "You have been successfully logged out.", 'info');
   };
+
+  const handleToggleAvailability = async (isAvailable: boolean) => {
+    if (user) {
+        try {
+          // Update in DB
+          // Note: In a real app we'd update the User record in DB, 
+          // here we just update state and assume session persistence handles it next load for now
+          // or we could add db.updateUser()
+          const updatedUser = await db.updateUser(user.id, { isAvailable });
+          setUser(updatedUser);
+          
+          if (isAvailable) {
+              addToast("You are now online 🟢", "You will be notified of new jobs nearby.", 'success');
+          } else {
+              addToast("You are offline 🔴", "You won't receive new job alerts.", 'info');
+          }
+        } catch (e) {
+          // If user doesn't exist in DB (e.g. guest), just update local state
+          setUser({ ...user, isAvailable });
+        }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-slate-700">Connecting to HaulHelper Services...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -324,6 +347,7 @@ const App: React.FC = () => {
             onRequesterConfirm={handleRequesterConfirm}
             onRateUser={handleRateUser}
             user={user}
+            onToggleAvailability={handleToggleAvailability}
           />
         )}
       </main>

@@ -1,18 +1,19 @@
 
 import React, { useState } from 'react';
 import { Job, User } from '../types';
-import { User as UserIcon, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { User as UserIcon, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpDown, Power } from 'lucide-react';
 
 interface UserProfileProps {
   jobs: Job[];
   onRequesterConfirm: (id: string) => void;
   onRateUser: (jobId: string, role: 'driver' | 'requester', rating: number) => void;
   user: User | null;
+  onToggleAvailability: (isAvailable: boolean) => void;
 }
 
 type SortOption = 'date_desc' | 'date_asc' | 'price_high' | 'price_low';
 
-const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onRateUser, user }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onRateUser, user, onToggleAvailability }) => {
   const [activeTab, setActiveTab] = useState<'requester' | 'driver'>('requester');
   const [requesterSort, setRequesterSort] = useState<SortOption>('date_desc');
 
@@ -298,6 +299,33 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onR
       {/* Driver Tab Content */}
       {activeTab === 'driver' && (
          <div className="space-y-6 animate-fadeIn">
+            {/* Availability Toggle */}
+            <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${user?.isAvailable ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex items-center">
+                    <div className={`p-2 rounded-full mr-3 ${user?.isAvailable ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                        <Power className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h3 className={`font-bold ${user?.isAvailable ? 'text-emerald-900' : 'text-slate-900'}`}>Driver Status</h3>
+                        <p className={`text-sm ${user?.isAvailable ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            {user?.isAvailable ? "You are Online and visible to requests." : "You are Offline. You won't receive alerts."}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => onToggleAvailability(!user?.isAvailable)}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                        user?.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                >
+                    <span
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                            user?.isAvailable ? 'translate-x-7' : 'translate-x-1'
+                        }`}
+                    />
+                </button>
+            </div>
+
              {/* Stats Cards */}
              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">

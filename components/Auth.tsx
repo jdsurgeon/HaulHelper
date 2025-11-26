@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, Smartphone, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, Smartphone, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { db } from '../services/databaseService';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -14,15 +15,38 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  
+  // Stored user from the first step to be passed after MFA
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
 
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+    
+    try {
+      if (mode === 'signup') {
+        const newUser: User = {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'u-' + Date.now(),
+          name: email.split('@')[0], // Simple name extraction
+          email: email,
+          isAvailable: true
+        };
+        // We actually create the user in step 1, or validate availability
+        // For this flow, we'll validate against DB then move to MFA
+        const createdUser = await db.signup(newUser);
+        setPendingUser(createdUser);
+      } else {
+        const existingUser = await db.login(email);
+        setPendingUser(existingUser);
+      }
       setStep('mfa');
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSSO = (provider: string) => {
@@ -31,6 +55,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setTimeout(() => {
       setLoading(false);
       setStep('mfa');
+      // Create a dummy user for SSO
+      setPendingUser({
+        id: `sso-${provider}-${Date.now()}`,
+        name: `User via ${provider}`,
+        email: `user@${provider}.com`
+      });
     }, 1500);
   };
 
@@ -42,12 +72,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setLoading(false);
       setStep('success');
       setTimeout(() => {
-        onLogin({
-          id: 'u-' + Date.now(),
-          name: mode === 'signin' ? 'Alex Hauler' : (email.split('@')[0] || 'New User'),
-          email: email || 'alex@example.com',
-          avatar: undefined
-        });
+        if (pendingUser) {
+          onLogin(pendingUser);
+        }
       }, 1000);
     }, 1500);
   };
@@ -65,7 +92,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <p className="mt-2 text-sm text-slate-600">
                 {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
                 <button 
-                  onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                  onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
                   className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors"
                 >
                   {mode === 'signin' ? 'Sign up' : 'Sign in'}
@@ -130,6 +157,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center mb-4">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                {error}
+              </div>
+            )}
+
             <form className="space-y-4" onSubmit={handleCredentialsSubmit}>
               <div>
                 <label className="block text-sm font-medium text-slate-700">Email address</label>
@@ -157,6 +191,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   <input
                     type="password"
                     required
+                    minLength={6}
                     className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                     placeholder="••••••••"
                     value={password}

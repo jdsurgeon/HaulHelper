@@ -14,6 +14,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  isAvailable?: boolean;
 }
 
 export interface Job {
