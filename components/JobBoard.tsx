@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Job } from '../types';
-import { MapPin, DollarSign, Clock, Truck, ChevronRight, CheckCircle, Package, ShieldCheck, Hourglass } from 'lucide-react';
+import { Job, VehicleType } from '../types';
+import { MapPin, DollarSign, Clock, Truck, ChevronRight, CheckCircle, Package, ShieldCheck, Hourglass, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 
 interface JobBoardProps {
   jobs: Job[];
@@ -8,8 +8,12 @@ interface JobBoardProps {
   onDriverConfirm: (id: string) => void;
 }
 
+type SortOption = 'newest' | 'price_high' | 'distance';
+
 const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm }) => {
   const [confirmingJobId, setConfirmingJobId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [filterVehicle, setFilterVehicle] = useState<VehicleType | 'all'>('all');
   
   const pendingJobs = jobs.filter(j => j.status === 'pending');
   const activeJobs = jobs.filter(j => j.status === 'accepted');
@@ -23,6 +27,21 @@ const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm 
 
   // Estimate travel time based on 25mph city driving + traffic
   const getEstMinutes = (miles: number) => Math.max(10, Math.round((miles / 25) * 60));
+
+  // Apply filters and sorting
+  const filteredJobs = pendingJobs
+    .filter(job => filterVehicle === 'all' || job.vehicleType === filterVehicle)
+    .sort((a, b) => {
+        switch (sortBy) {
+            case 'price_high':
+                return b.price - a.price;
+            case 'distance':
+                return a.distanceMiles - b.distanceMiles;
+            case 'newest':
+            default:
+                return b.createdAt - a.createdAt;
+        }
+    });
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 relative">
@@ -125,27 +144,63 @@ const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm 
         </div>
       )}
 
-      <div className="flex justify-between items-end mb-8 border-t border-slate-200 pt-8">
+      <div className="flex flex-col sm:flex-row justify-between items-end mb-6 border-t border-slate-200 pt-8 gap-4">
         <div>
             <h2 className="text-3xl font-bold text-slate-900">Available Hauls</h2>
             <p className="text-slate-500 mt-2">Earn money with your truck today.</p>
         </div>
-        <div className="text-right hidden sm:block">
-            <div className="text-sm font-medium text-slate-900">Active Drivers: 12</div>
-            <div className="text-xs text-slate-500">Within 20 miles</div>
+        
+        {/* Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                </div>
+                <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none w-full appearance-none cursor-pointer"
+                >
+                    <option value="newest">Newest First</option>
+                    <option value="price_high">Highest Price</option>
+                    <option value="distance">Shortest Distance</option>
+                </select>
+            </div>
+
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+                </div>
+                <select 
+                    value={filterVehicle} 
+                    onChange={(e) => setFilterVehicle(e.target.value as VehicleType | 'all')}
+                    className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none w-full appearance-none cursor-pointer"
+                >
+                    <option value="all">All Vehicles</option>
+                    {Object.values(VehicleType).map(v => (
+                        <option key={v} value={v}>{v.split('(')[0].trim()}</option>
+                    ))}
+                </select>
+            </div>
         </div>
       </div>
 
-      {pendingJobs.length === 0 ? (
+      {filteredJobs.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
             <Truck className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-900">No active jobs right now</h3>
-            <p className="text-slate-500 mt-2">Check back later or enable notifications.</p>
+            <h3 className="text-xl font-medium text-slate-900">No jobs match your filters</h3>
+            <p className="text-slate-500 mt-2">Try adjusting your search criteria.</p>
+            <button 
+                onClick={() => {setFilterVehicle('all'); setSortBy('newest');}}
+                className="mt-4 text-emerald-600 font-medium hover:text-emerald-700"
+            >
+                Clear Filters
+            </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pendingJobs.map(job => (
-            <div key={job.id} className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 flex flex-col overflow-hidden">
+          {filteredJobs.map(job => (
+            <div key={job.id} className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 flex flex-col overflow-hidden animate-fadeIn">
                 <div className="h-48 bg-slate-100 relative overflow-hidden group">
                     {job.imageUrl ? (
                         <img src={job.imageUrl} alt={job.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />

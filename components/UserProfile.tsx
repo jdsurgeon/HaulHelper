@@ -80,7 +80,29 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
       {/* Requester Tab Content */}
       {activeTab === 'requester' && (
          <div className="space-y-6 animate-fadeIn">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center">
+            {/* Requester Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                   <div className="text-slate-500 text-sm font-medium mb-1">Total Requests</div>
+                   <div className="flex items-center text-3xl font-bold text-slate-900">
+                      {myRequests.length}
+                   </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                   <div className="text-slate-500 text-sm font-medium mb-1">Active Jobs</div>
+                   <div className="flex items-center text-3xl font-bold text-emerald-600">
+                      {myRequests.filter(j => j.status !== 'completed').length}
+                   </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                   <div className="text-slate-500 text-sm font-medium mb-1">Total Spent</div>
+                   <div className="flex items-center text-3xl font-bold text-slate-900">
+                      ${myRequests.filter(j => j.status === 'completed').reduce((sum, job) => sum + job.price + (job.platformFee || 0), 0)}
+                   </div>
+                </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-900 flex items-center mt-2">
                 <Clock className="h-5 w-5 mr-2 text-emerald-600" />
                 Past Requests
             </h2>
@@ -104,7 +126,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                         <div className="flex items-center text-xs text-slate-500 space-x-3 sm:space-x-4 flex-wrap">
                                             <span className="flex items-center"><Calendar className="h-3 w-3 mr-1" /> {new Date(job.createdAt).toLocaleDateString()}</span>
                                             <span className="flex items-center"><Truck className="h-3 w-3 mr-1" /> {job.vehicleType.split('(')[0]}</span>
-                                            <span className="flex items-center"><Clock className="h-3 w-3 mr-1" /> {getEstMinutes(job.distanceMiles)} min drive</span>
+                                            <span className="flex items-center"><Clock className="h-3 w-3 mr-1" /> Est. {getEstMinutes(job.distanceMiles)} min ({job.distanceMiles} mi)</span>
                                             <span className="font-semibold text-slate-700">Total: ${job.price + (job.platformFee || 0)}</span>
                                         </div>
 
@@ -222,7 +244,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                             </div>
                                              <div className="hidden sm:block text-slate-300">|</div>
                                              <div className="flex items-center text-slate-400">
-                                                <Clock className="h-3 w-3 mr-1" /> {getEstMinutes(job.distanceMiles)} min drive
+                                                <Clock className="h-3 w-3 mr-1" /> Est. {getEstMinutes(job.distanceMiles)} min ({job.distanceMiles} mi)
                                             </div>
                                         </div>
                                     </div>
