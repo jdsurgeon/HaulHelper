@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import RequestFlow from './components/RequestFlow';
 import JobBoard from './components/JobBoard';
 import UserProfile from './components/UserProfile';
+import Auth from './components/Auth';
 import { ToastContainer, ToastMessage } from './components/Toast';
-import { ViewState, Job, VehicleType } from './types';
+import { ViewState, Job, VehicleType, User } from './types';
 import { ArrowRight, Package, ShieldCheck, Truck } from 'lucide-react';
 
 // Mock Initial Data
@@ -64,6 +66,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -186,9 +189,26 @@ const App: React.FC = () => {
     addToast("Rating Submitted ⭐", "Thanks for your feedback!", 'success');
   };
 
+  const handleLogin = (user: User) => {
+    setUser(user);
+    setCurrentView('landing');
+    addToast("Welcome back!", `Signed in as ${user.name}`, 'success');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentView('landing');
+    addToast("Signed out", "You have been successfully logged out.", 'info');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Navbar currentView={currentView} setView={setCurrentView} />
+      <Navbar 
+        currentView={currentView} 
+        setView={setCurrentView} 
+        user={user} 
+        onLogout={handleLogout}
+      />
       
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
@@ -282,6 +302,10 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {currentView === 'auth' && (
+            <Auth onLogin={handleLogin} />
+        )}
+
         {currentView === 'request' && (
           <RequestFlow onJobCreated={handleJobCreated} />
         )}
@@ -299,6 +323,7 @@ const App: React.FC = () => {
             jobs={jobs} 
             onRequesterConfirm={handleRequesterConfirm}
             onRateUser={handleRateUser}
+            user={user}
           />
         )}
       </main>

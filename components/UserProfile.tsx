@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
-import { Job } from '../types';
-import { User, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { Job, User } from '../types';
+import { User as UserIcon, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpDown } from 'lucide-react';
 
 interface UserProfileProps {
   jobs: Job[];
   onRequesterConfirm: (id: string) => void;
   onRateUser: (jobId: string, role: 'driver' | 'requester', rating: number) => void;
+  user: User | null;
 }
 
 type SortOption = 'date_desc' | 'date_asc' | 'price_high' | 'price_low';
 
-const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onRateUser }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onRateUser, user }) => {
   const [activeTab, setActiveTab] = useState<'requester' | 'driver'>('requester');
   const [requesterSort, setRequesterSort] = useState<SortOption>('date_desc');
 
@@ -114,14 +115,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onR
       {/* Profile Header */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
         <div className="p-6 sm:p-8 flex items-center space-x-6">
-           <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center border-2 border-slate-200">
-              <User className="h-10 w-10 text-slate-400" />
+           <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center border-2 border-slate-200 shrink-0">
+              <span className="text-2xl font-bold text-slate-400">{user?.name?.charAt(0) || <UserIcon className="h-10 w-10" />}</span>
            </div>
            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Alex Hauler</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{user?.name || "Guest User"}</h1>
               <p className="text-slate-500 flex items-center mt-1">
                 <Calendar className="h-3 w-3 mr-1" /> Member since Sept 2023
               </p>
+              {user?.email && <p className="text-sm text-slate-400 mt-1">{user.email}</p>}
            </div>
         </div>
 

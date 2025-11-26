@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, MapPin, DollarSign, ArrowRight, Loader2, Sparkles, CheckCircle2, Truck, ShieldCheck, AlertCircle, Package } from 'lucide-react';
+import { Upload, MapPin, DollarSign, ArrowRight, Loader2, Sparkles, CheckCircle2, Truck, ShieldCheck, AlertCircle, Package, Info } from 'lucide-react';
 import { Job, VehicleType, AIAnalysisResult } from '../types';
 import { analyzeItemImage } from '../services/geminiService';
 
@@ -60,6 +60,7 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
     try {
       const result = await analyzeItemImage(imagePreview, formData.description, formData.distance);
       setAiAnalysis(result);
+      // Automatically pre-fill price and vehicle type from AI result
       setFormData(prev => ({
         ...prev,
         price: result.suggestedPrice,
@@ -262,11 +263,31 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Explicit AI Suggestion for Vehicle */}
+                    <div className="mt-4 pt-3 border-t border-indigo-200 flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Truck className="h-5 w-5 text-indigo-600 mr-2" />
+                            <span className="text-sm font-medium text-indigo-900">Suggested Vehicle:</span>
+                            <span className="ml-2 text-sm font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-100">
+                                {aiAnalysis.vehicleType}
+                            </span>
+                        </div>
+                    </div>
                  </div>
                )}
 
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-1">Recommended Vehicle</label>
+               <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                 <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-slate-700">Selected Vehicle</label>
+                    <span className="text-xs text-slate-500 flex items-center">
+                        {formData.vehicleType === aiAnalysis?.vehicleType ? (
+                            <span className="text-emerald-600 font-medium flex items-center"><CheckCircle2 className="h-3 w-3 mr-1"/> Matches AI</span>
+                        ) : (
+                             "You modified the suggestion"
+                        )}
+                    </span>
+                 </div>
                  <select 
                     value={formData.vehicleType}
                     onChange={(e) => setFormData({...formData, vehicleType: e.target.value as VehicleType})}
@@ -276,6 +297,12 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                         <option key={v} value={v}>{v}</option>
                     ))}
                  </select>
+                 <div className="flex items-start mt-2">
+                    <Info className="h-4 w-4 text-slate-400 mr-1.5 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-slate-500">
+                        The AI suggests the best fit, but you can override this if you have specific requirements or prefer a different vehicle type.
+                    </p>
+                 </div>
                </div>
 
                <div>
@@ -290,7 +317,29 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                       onChange={e => setFormData({...formData, price: parseInt(e.target.value) || 0})}
                     />
                  </div>
-                 <p className="text-xs text-slate-500 mt-1">Suggested based on analysis: ${aiAnalysis?.suggestedPrice || 50}</p>
+                 <div className="flex justify-between items-start mt-1">
+                     <p className="text-xs text-slate-500 flex items-center">
+                        {formData.price === aiAnalysis?.suggestedPrice ? (
+                            <span className="text-emerald-600 flex items-center font-medium">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Pre-filled with AI suggestion
+                            </span>
+                        ) : (
+                            <span>
+                                AI suggested: <span className="font-medium">${aiAnalysis?.suggestedPrice || 0}</span>. You can edit this offer.
+                            </span>
+                        )}
+                     </p>
+                     {formData.price !== aiAnalysis?.suggestedPrice && (
+                         <button 
+                            type="button"
+                            onClick={() => setFormData({...formData, price: aiAnalysis?.suggestedPrice || 0})}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 underline"
+                         >
+                            Reset to AI Price
+                         </button>
+                     )}
+                 </div>
                </div>
                
                <div className="bg-slate-50 p-4 rounded-lg space-y-2 border border-slate-100">

@@ -1,5 +1,5 @@
 
-export type ViewState = 'landing' | 'request' | 'driver' | 'profile';
+export type ViewState = 'landing' | 'request' | 'driver' | 'profile' | 'auth';
 
 export enum VehicleType {
   SEDAN = 'Sedan (Small Items)',
@@ -7,6 +7,13 @@ export enum VehicleType {
   PICKUP = 'Pickup Truck (Large Items)',
   BOX_TRUCK = 'Box Truck (Whole Room)',
   VAN = 'Cargo Van (Weather Sensitive)'
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
 }
 
 export interface Job {
