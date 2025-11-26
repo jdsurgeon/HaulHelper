@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { Upload, MapPin, DollarSign, ArrowRight, Loader2, Sparkles, CheckCircle2, Truck, ShieldCheck } from 'lucide-react';
+import { Upload, MapPin, DollarSign, ArrowRight, Loader2, Sparkles, CheckCircle2, Truck, ShieldCheck, AlertCircle, Package } from 'lucide-react';
 import { Job, VehicleType, AIAnalysisResult } from '../types';
 import { analyzeItemImage } from '../services/geminiService';
 
@@ -23,6 +24,8 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
     distance: number;
     price: number;
     vehicleType: VehicleType;
+    handlingInstructions: string;
+    fragility: string;
   }>({
     title: '',
     description: '',
@@ -30,7 +33,9 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
     dropoff: '',
     distance: 5, // Default mock distance
     price: 0,
-    vehicleType: VehicleType.PICKUP
+    vehicleType: VehicleType.PICKUP,
+    handlingInstructions: '',
+    fragility: ''
   });
 
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
@@ -84,7 +89,9 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
       distanceMiles: formData.distance,
       aiAnalysis: aiAnalysis?.reasoning,
       driverConfirmed: false,
-      requesterConfirmed: false
+      requesterConfirmed: false,
+      handlingInstructions: formData.handlingInstructions,
+      fragility: formData.fragility
     };
     onJobCreated(newJob);
   };
@@ -138,6 +145,35 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Item Fragility (Optional)</label>
+                    <div className="relative">
+                        <Package className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="e.g. Delicate, Sturdy, Glass"
+                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            value={formData.fragility}
+                            onChange={e => setFormData({...formData, fragility: e.target.value})}
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Handling Instructions (Optional)</label>
+                    <div className="relative">
+                        <AlertCircle className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="e.g. Needs straps, 2 people required"
+                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            value={formData.handlingInstructions}
+                            onChange={e => setFormData({...formData, handlingInstructions: e.target.value})}
+                        />
+                    </div>
+                </div>
               </div>
 
               <div>
@@ -214,7 +250,7 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                     <div className="flex items-start">
                         <Sparkles className="h-6 w-6 text-indigo-600 mt-1 flex-shrink-0 mr-3" />
                         <div>
-                            <h3 className="font-semibold text-indigo-900">AI Recommendation</h3>
+                            <h3 className="font-semibold text-indigo-900">AI Analysis & Handling Advice</h3>
                             <p className="text-sm text-indigo-700 mt-1">{aiAnalysis.reasoning}</p>
                             <div className="mt-3 flex gap-2 flex-wrap">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
@@ -303,6 +339,27 @@ const RequestFlow: React.FC<RequestFlowProps> = ({ onJobCreated }) => {
                             <span className="block text-2xl font-bold text-emerald-600">${totalCost}</span>
                             <span className="text-xs text-slate-500">Total</span>
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {formData.fragility && (
+                            <div className="bg-blue-50 p-3 rounded-lg flex items-start border border-blue-100">
+                                <Package className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">Fragility</p>
+                                    <p className="text-sm text-blue-900">{formData.fragility}</p>
+                                </div>
+                            </div>
+                        )}
+                        {formData.handlingInstructions && (
+                            <div className="bg-orange-50 p-3 rounded-lg flex items-start border border-orange-100">
+                                <AlertCircle className="h-5 w-5 text-orange-600 mr-2 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Handling</p>
+                                    <p className="text-sm text-orange-900">{formData.handlingInstructions}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     
                     <div className="border-t border-slate-200 pt-4 space-y-2">

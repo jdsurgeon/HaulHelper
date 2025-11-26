@@ -1,3 +1,4 @@
+
 export type ViewState = 'landing' | 'request' | 'driver' | 'profile';
 
 export enum VehicleType {
@@ -24,6 +25,10 @@ export interface Job {
   aiAnalysis?: string;
   driverConfirmed?: boolean;
   requesterConfirmed?: boolean;
+  handlingInstructions?: string;
+  fragility?: string;
+  ratingForDriver?: number;
+  ratingForRequester?: number;
 }
 
 export interface AIAnalysisResult {

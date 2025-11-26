@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Job, VehicleType } from '../types';
-import { MapPin, DollarSign, Clock, Truck, ChevronRight, CheckCircle, Package, ShieldCheck, Hourglass, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { MapPin, DollarSign, Clock, Truck, ChevronRight, CheckCircle, Package, ShieldCheck, Hourglass, SlidersHorizontal, ArrowUpDown, AlertCircle } from 'lucide-react';
 
 interface JobBoardProps {
   jobs: Job[];
@@ -104,6 +105,21 @@ const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm 
                                 </div>
                                 <p className="text-sm text-slate-500 mb-4 line-clamp-1">{job.description}</p>
                                 
+                                <div className="flex flex-col gap-2 mb-4">
+                                    {job.fragility && (
+                                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 flex items-start">
+                                            <Package className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                                            <p className="text-xs text-blue-800">Fragility: {job.fragility}</p>
+                                        </div>
+                                    )}
+                                    {job.handlingInstructions && (
+                                        <div className="bg-orange-50 border border-orange-100 rounded-lg p-2.5 flex items-start">
+                                            <AlertCircle className="h-4 w-4 text-orange-600 mr-2 flex-shrink-0 mt-0.5" />
+                                            <p className="text-xs text-orange-800">{job.handlingInstructions}</p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="space-y-4 mb-6 bg-slate-50 p-4 rounded-lg flex-1">
                                     <div className="flex relative pl-4 border-l-2 border-slate-300">
                                         <div>
@@ -178,7 +194,7 @@ const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm 
                 >
                     <option value="all">All Vehicles</option>
                     {Object.values(VehicleType).map(v => (
-                        <option key={v} value={v}>{v.split('(')[0].trim()}</option>
+                        <option key={v} value={v}>{v}</option>
                     ))}
                 </select>
             </div>
@@ -219,6 +235,21 @@ const JobBoard: React.FC<JobBoardProps> = ({ jobs, onAcceptJob, onDriverConfirm 
                         <h3 className="font-bold text-lg text-slate-900 mb-1">{job.title}</h3>
                         <p className="text-sm text-slate-500 line-clamp-2 mb-4">{job.description}</p>
                         
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {job.fragility && (
+                                <div className="flex items-center text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-100">
+                                    <Package className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                                    <span>Fragility: {job.fragility}</span>
+                                </div>
+                            )}
+                            {job.handlingInstructions && (
+                                <div className="flex items-start text-xs text-orange-700 bg-orange-50 p-2 rounded border border-orange-100">
+                                    <AlertCircle className="h-3 w-3 mr-1.5 flex-shrink-0 mt-0.5" />
+                                    <span className="line-clamp-2">{job.handlingInstructions}</span>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="space-y-2.5">
                             <div className="flex items-start text-sm">
                                 <MapPin className="h-4 w-4 text-slate-400 mt-0.5 mr-2 flex-shrink-0" />

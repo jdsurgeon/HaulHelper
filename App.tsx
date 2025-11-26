@@ -55,7 +55,8 @@ const INITIAL_JOBS: Job[] = [
     distanceMiles: 5,
     imageUrl: 'https://picsum.photos/400/300?random=3',
     driverConfirmed: true,
-    requesterConfirmed: true
+    requesterConfirmed: true,
+    ratingForDriver: 5
   }
 ];
 
@@ -169,6 +170,22 @@ const App: React.FC = () => {
     }, 500);
   };
 
+  const handleRateUser = (jobId: string, role: 'driver' | 'requester', rating: number) => {
+    setJobs(jobs.map(j => {
+        if (j.id === jobId) {
+            // If the user is a 'driver' (in driver view), they are rating the requester
+            // If the user is a 'requester' (in requester view), they are rating the driver
+            return {
+                ...j,
+                ratingForRequester: role === 'driver' ? rating : j.ratingForRequester,
+                ratingForDriver: role === 'requester' ? rating : j.ratingForDriver
+            };
+        }
+        return j;
+    }));
+    addToast("Rating Submitted ⭐", "Thanks for your feedback!", 'success');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar currentView={currentView} setView={setCurrentView} />
@@ -278,7 +295,11 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'profile' && (
-          <UserProfile jobs={jobs} onRequesterConfirm={handleRequesterConfirm} />
+          <UserProfile 
+            jobs={jobs} 
+            onRequesterConfirm={handleRequesterConfirm}
+            onRateUser={handleRateUser}
+          />
         )}
       </main>
     </div>

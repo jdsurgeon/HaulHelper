@@ -1,17 +1,22 @@
+
 import React, { useState } from 'react';
 import { Job } from '../types';
-import { User, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle } from 'lucide-react';
+import { User, Star, Package, Truck, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpDown } from 'lucide-react';
 
 interface UserProfileProps {
   jobs: Job[];
   onRequesterConfirm: (id: string) => void;
+  onRateUser: (jobId: string, role: 'driver' | 'requester', rating: number) => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) => {
+type SortOption = 'date_desc' | 'date_asc' | 'price_high' | 'price_low';
+
+const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm, onRateUser }) => {
   const [activeTab, setActiveTab] = useState<'requester' | 'driver'>('requester');
+  const [requesterSort, setRequesterSort] = useState<SortOption>('date_desc');
 
   // In a real app with auth, we would filter by creatorId for requests
-  const myRequests = jobs; 
+  const myRequests = [...jobs]; // Create a copy for sorting
   
   // For Driver history, we strictly look for accepted/completed status
   const myDrives = jobs.filter(j => j.status === 'accepted' || j.status === 'completed');
@@ -23,6 +28,24 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
   // Helper to get estimated time
   const getEstMinutes = (miles: number) => Math.max(10, Math.round((miles / 25) * 60));
 
+  // Sort logic for requests
+  const sortedRequests = myRequests.sort((a, b) => {
+    const costA = a.price + (a.platformFee || 0);
+    const costB = b.price + (b.platformFee || 0);
+
+    switch (requesterSort) {
+        case 'date_asc':
+            return a.createdAt - b.createdAt;
+        case 'price_high':
+            return costB - costA;
+        case 'price_low':
+            return costA - costB;
+        case 'date_desc':
+        default:
+            return b.createdAt - a.createdAt;
+    }
+  });
+
   const StatusBadge = ({ job }: { job: Job }) => {
     switch (job.status) {
       case 'completed':
@@ -32,6 +55,58 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
       default:
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Pending</span>;
     }
+  };
+
+  const RateUser = ({ job, role }: { job: Job, role: 'driver' | 'requester' }) => {
+    const isDriverView = role === 'driver';
+    // If I'm the driver, I check if I have rated the requester
+    // If I'm the requester, I check if I have rated the driver
+    const currentRating = isDriverView ? job.ratingForRequester : job.ratingForDriver;
+    const targetLabel = isDriverView ? "Requester" : "Driver";
+
+    const [hoverRating, setHoverRating] = useState(0);
+
+    if (currentRating) {
+        return (
+            <div className="mt-3 flex items-center bg-yellow-50/50 p-2 rounded-lg w-fit border border-yellow-100/50">
+                <span className="text-xs font-medium text-slate-500 mr-2">You rated {targetLabel}:</span>
+                <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <Star 
+                            key={star} 
+                            className={`h-4 w-4 ${star <= currentRating ? 'text-yellow-400 fill-current' : 'text-slate-200'}`} 
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+             <div className="flex items-center space-x-2">
+                 <span className="text-sm font-bold text-slate-700">Rate {targetLabel}:</span>
+                 <div className="flex" onMouseLeave={() => setHoverRating(0)}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                            key={star}
+                            className="p-1 focus:outline-none transition-transform hover:scale-110"
+                            onMouseEnter={() => setHoverRating(star)}
+                            onClick={() => onRateUser(job.id, role, star)}
+                        >
+                            <Star 
+                                className={`h-5 w-5 transition-colors ${
+                                    star <= (hoverRating || 0) 
+                                        ? 'text-yellow-400 fill-current' 
+                                        : 'text-slate-300'
+                                }`} 
+                            />
+                        </button>
+                    ))}
+                 </div>
+             </div>
+        </div>
+    );
   };
 
   return (
@@ -102,19 +177,37 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                 </div>
             </div>
 
-            <h2 className="text-xl font-bold text-slate-900 flex items-center mt-2">
-                <Clock className="h-5 w-5 mr-2 text-emerald-600" />
-                Past Requests
-            </h2>
+            <div className="flex items-center justify-between mt-2">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-emerald-600" />
+                    Past Requests
+                </h2>
+                
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                    <select 
+                        value={requesterSort}
+                        onChange={(e) => setRequesterSort(e.target.value as SortOption)}
+                        className="pl-8 pr-8 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none appearance-none cursor-pointer text-slate-700"
+                    >
+                        <option value="date_desc">Newest First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="price_high">Highest Cost</option>
+                        <option value="price_low">Lowest Cost</option>
+                    </select>
+                </div>
+            </div>
             
-            {myRequests.length === 0 ? (
+            {sortedRequests.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-lg border border-slate-200 border-dashed">
                     <p className="text-slate-500">No requests made yet.</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <ul className="divide-y divide-slate-200">
-                        {myRequests.map((job) => (
+                        {sortedRequests.map((job) => (
                             <li key={job.id} className="p-4 sm:p-6 hover:bg-slate-50 transition-colors">
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <div className="flex-1 min-w-0">
@@ -123,6 +216,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                             <StatusBadge job={job} />
                                         </div>
                                         <p className="text-sm text-slate-500 line-clamp-1 mb-2">{job.description}</p>
+                                        
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {job.fragility && (
+                                                <div className="flex items-center text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                                                    <Package className="h-3 w-3 mr-1" />
+                                                    Fragility: {job.fragility}
+                                                </div>
+                                            )}
+                                            {job.handlingInstructions && (
+                                                <div className="flex items-center text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">
+                                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                                    Handling: {job.handlingInstructions}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="flex items-center text-xs text-slate-500 space-x-3 sm:space-x-4 flex-wrap">
                                             <span className="flex items-center"><Calendar className="h-3 w-3 mr-1" /> {new Date(job.createdAt).toLocaleDateString()}</span>
                                             <span className="flex items-center"><Truck className="h-3 w-3 mr-1" /> {job.vehicleType.split('(')[0]}</span>
@@ -163,6 +272,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                                     </div>
                                                 </div>
                                             </div>
+                                        )}
+                                        
+                                        {/* Rate Driver Section */}
+                                        {job.status === 'completed' && (
+                                            <RateUser job={job} role="requester" />
                                         )}
                                     </div>
                                     {job.imageUrl && (
@@ -232,6 +346,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                             <h3 className="text-sm font-bold text-slate-900">{job.title}</h3>
                                             <StatusBadge job={job} />
                                         </div>
+                                        
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {job.fragility && (
+                                                <div className="flex items-center text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                                                    <Package className="h-3 w-3 mr-1" />
+                                                    Fragility: {job.fragility}
+                                                </div>
+                                            )}
+                                            {job.handlingInstructions && (
+                                                <div className="flex items-center text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">
+                                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                                    Handling: {job.handlingInstructions}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="flex flex-col sm:flex-row sm:items-center text-xs text-slate-500 gap-1 sm:gap-4 mt-2">
                                             <div className="flex items-center">
                                                 <MapPin className="h-3 w-3 mr-1" />
@@ -247,8 +377,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ jobs, onRequesterConfirm }) =
                                                 <Clock className="h-3 w-3 mr-1" /> Est. {getEstMinutes(job.distanceMiles)} min ({job.distanceMiles} mi)
                                             </div>
                                         </div>
+
+                                        {/* Rate Requester Section */}
+                                        {job.status === 'completed' && (
+                                            <RateUser job={job} role="driver" />
+                                        )}
                                     </div>
-                                    <div className="flex items-center justify-between sm:justify-end gap-6">
+                                    <div className="flex items-center justify-between sm:justify-end gap-6 self-start">
                                         <div className="text-right">
                                             <span className="block text-lg font-bold text-slate-900">${job.price}</span>
                                         </div>
